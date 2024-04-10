@@ -5,9 +5,11 @@ import Link from "next/link";
 import { api } from "~/utils/api";
 
 export default function Home() {
-  const hello = api.post.hello.useQuery({ text: "from tRPC" });
-
   const user = useUser();
+
+  const { data } = api.post.getAll.useQuery();
+
+  console.log(data);
 
   return (
     <>
@@ -19,6 +21,13 @@ export default function Home() {
       <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c]">
         <div className="flex flex-col items-center justify-center space-y-4">
           {!user.isSignedIn ? <SignIn /> : <SignOutButton />}
+        </div>
+        <div>
+          {data?.map((post) => (
+            <div key={post.id}>
+              <Link href={`/posts/${post.id}`}>{post.content}</Link>
+            </div>
+          ))}
         </div>
       </main>
     </>
