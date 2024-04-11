@@ -11,6 +11,7 @@ import { api } from "~/utils/api";
 
 import type { RouterOutputs } from "~/utils/api";
 import { LoadingPage } from "~/components/loading";
+import { useState } from "react";
 
 type PostWithUser = RouterOutputs["post"]["getAll"][number];
 
@@ -31,7 +32,7 @@ const PostView = (props: PostWithUser) => {
             <span>{`@${author.username} · `}</span>
             <span className="font-thin">{dayjs(post.createdAt).fromNow()}</span>
           </div>
-          <span>{post.content}</span>
+          <span className="text-2xl">{post.content}</span>
         </div>
       </div>
     </div>
@@ -41,7 +42,17 @@ const PostView = (props: PostWithUser) => {
 const CreatePostWizard = () => {
   const { user } = useUser();
 
-  console.log(user?.id);
+  const [input, setInput] = useState("");
+
+  const ctx = api.useContext();
+
+  const { mutate, isPending } = api.post.create.useMutation({
+    onSuccess: () => {
+      setInput("");
+
+      void ctx.post.getAll.invalidate();
+    },
+  });
 
   if (!user) {
     return null;
@@ -60,7 +71,10 @@ const CreatePostWizard = () => {
         type="text"
         placeholder="What's on your mind?"
         className="w-full bg-transparent outline-none"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
       />
+      <button onClick={() => mutate({ content: input })}>Post</button>
     </div>
   );
 };
