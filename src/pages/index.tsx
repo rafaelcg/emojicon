@@ -10,8 +10,9 @@ dayjs.extend(relativeTime);
 import { api } from "~/utils/api";
 
 import type { RouterOutputs } from "~/utils/api";
-import { LoadingPage } from "~/components/loading";
+import { LoadingPage, LoadingSpinner } from "~/components/loading";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 type PostWithUser = RouterOutputs["post"]["getAll"][number];
 
@@ -46,11 +47,19 @@ const CreatePostWizard = () => {
 
   const ctx = api.useContext();
 
-  const { mutate, isPending } = api.post.create.useMutation({
+  const { mutate, isPending: isPosting } = api.post.create.useMutation({
     onSuccess: () => {
       setInput("");
 
       void ctx.post.getAll.invalidate();
+    },
+    onError: (e) => {
+      const errorMessage = e.data?.zodError?.fieldErrors.content;
+      if (errorMessage && errorMessage[0]) {
+        toast.error(errorMessage[0]);
+      } else {
+        toast.error("An error occurred");
+      }
     },
   });
 
@@ -73,8 +82,22 @@ const CreatePostWizard = () => {
         className="w-full bg-transparent outline-none"
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            mutate({ content: input });
+          }
+        }}
+        disabled={isPosting}
       />
-      <button onClick={() => mutate({ content: input })}>Post</button>
+      {input !== "" && !isPosting && (
+        <button onClick={() => mutate({ content: input })}>Post</button>
+      )}
+      {isPosting && (
+        <div className="flex items-center justify-center">
+          <LoadingSpinner />
+        </div>
+      )}
     </div>
   );
 };

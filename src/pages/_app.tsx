@@ -7,6 +7,8 @@ import "~/styles/globals.css";
 
 import { ClerkProvider } from "@clerk/nextjs";
 
+import { Toaster } from "react-hot-toast";
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -14,6 +16,7 @@ const inter = Inter({
 const MyApp: AppType = ({ Component, pageProps }) => {
   return (
     <ClerkProvider>
+      <Toaster position="bottom-center" />
       <main className={`font-sans ${inter.variable}`}>
         <Component {...pageProps} />
       </main>
