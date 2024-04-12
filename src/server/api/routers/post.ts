@@ -11,6 +11,33 @@ import {
 import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
 import { Redis } from "@upstash/redis"; // see below for cloudflare and fastly adapters
 import { filterUserForClient } from "~/server/helpers/filterClients";
+import type { Post } from "@prisma/client";
+
+const addUserDataToPost = async (posts: Post[]) => {
+  const users = (
+    await clerkClient.users.getUserList({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      userId: posts.map((post) => post.authorId),
+      limit: 100,
+    })
+  ).map(filterUserForClient);
+
+  return posts.map((post) => {
+    const author = users.find((user) => user.id === post.authorId);
+
+    if (!author) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Author not found",
+      });
+    }
+
+    return {
+      post,
+      author,
+    };
+  });
+};
 
 // Create a new ratelimiter, that allows 3 requests per 1 minute
 const ratelimit = new Ratelimit({
@@ -37,30 +64,21 @@ export const postRouter = createTRPCRouter({
       orderBy: { createdAt: "desc" },
     });
 
-    const users = (
-      await clerkClient.users.getUserList({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-        userId: posts.map((post) => post.authorId),
-        limit: 100,
-      })
-    ).map(filterUserForClient);
-
-    return posts.map((post) => {
-      const author = users.find((user) => user.id === post.authorId);
-
-      if (!author) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Author not found",
-        });
-      }
-
-      return {
-        post,
-        author,
-      };
-    });
+    return addUserDataToPost(posts);
   }),
+
+  getPostsByUserId: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(({ ctx, input }) => {
+      return ctx.db.post
+        .findMany({
+          where: {
+            authorId: input.userId,
+          },
+          orderBy: { createdAt: "desc" },
+        })
+        .then(addUserDataToPost);
+    }),
 
   create: privateProcedure
     .input(
